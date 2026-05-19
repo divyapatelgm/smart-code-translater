@@ -1,0 +1,83 @@
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: calc(100vh - 180px);
+  margin-top: 24px;
+}
+
+.editor-container, .output-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  height: 48px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-radius: 12px 12px 0 0;
+}
+
+.panel-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.editor-surface {
+  flex: 1;
+  background: #1e1e1e; /* Monaco default dark */
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.output-surface {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  padding: 20px;
+  color: #d4d4d4;
+  overflow-y: auto;
+  border-radius: 0 0 12px 12px;
+}
+
+.controls-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.lang-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.translate-btn {
+  margin-top: 24px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .editor-surface, .output-surface {
+    height: 400px;
+  }
+}
