@@ -8,9 +8,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // 🔹 List of models to try in order of priority/stability
 const AVAILABLE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
+  "gemini-3.6-flash",
   "gemini-flash-latest",
   "gemini-pro-latest"
 ];
@@ -34,11 +32,15 @@ const extractJSON = (text) => {
   }
 };
 
-const generateWithRetry = async (prompt, retries = 2, delay = 2000) => {
+const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 2000) => {
   let lastError = null;
 
   for (const modelName of AVAILABLE_MODELS) {
-    const model = genAI.getGenerativeModel({ model: modelName });
+    const config = isJson ? { responseMimeType: "application/json" } : {};
+    const model = genAI.getGenerativeModel({ 
+      model: modelName,
+      generationConfig: config
+    });
     
     for (let i = 0; i < retries; i++) {
       try {
@@ -84,7 +86,7 @@ export const translateCode = async (code, sourceLang, targetLang) => {
   Code:
   ${code}`;
 
-  const text = await generateWithRetry(prompt);
+  const text = await generateWithRetry(prompt, false);
   // Clean off any markdown if AI ignores instructions
   const cleaned = text.replace(/```[a-z]*\n?/gi, "").replace(/```/g, "").trim();
   return { translatedCode: cleaned };
@@ -92,12 +94,24 @@ export const translateCode = async (code, sourceLang, targetLang) => {
 
 export const analyzeComplexity = async (code, lang) => {
   const prompt = `Analyze the time and space complexity of the following ${lang} code.
-  Return your response in a valid JSON format with three fields: "timeComplexity", "spaceComplexity", and "explanation".
+  Return your response in a valid JSON format with these exact fields:
+  - "timeComplexity" (string, e.g. "O(1)", "O(n)")
+  - "spaceComplexity" (string, e.g. "O(1)", "O(n)")
+  - "explanation" (string, short summary of why it has this complexity)
+  - "operations" (optional array of strings, listing the main operations the code performs)
+  - "breakdown" (optional array of objects with "title" and "description" detailing loop/recursion analysis)
+  - "spaceBreakdown" (optional array of objects with "title" and "description" detailing space usage)
+  - "bestCase" (optional string)
+  - "averageCase" (optional string)
+  - "worstCase" (optional string)
+  - "assumptions" (optional string, any assumptions made for the complexity)
+  - "technicalNotes" (optional string, any specific language caveats like Python arbitrary precision integers)
 
+  Do not fabricate results. Just analyze the provided code.
   Code:
   ${code}`;
 
-  const text = await generateWithRetry(prompt);
+  const text = await generateWithRetry(prompt, true);
   return extractJSON(text);
 };
 
@@ -108,7 +122,7 @@ export const optimizeCode = async (code, lang) => {
   Code:
   ${code}`;
 
-  const text = await generateWithRetry(prompt);
+  const text = await generateWithRetry(prompt, true);
   return extractJSON(text);
 };
 
@@ -121,6 +135,39 @@ export const explainCode = async (code, lang) => {
   Code:
   ${code}`;
 
-  const text = await generateWithRetry(prompt);
+  const text = await generateWithRetry(prompt, true);
+  return extractJSON(text);
+};
+
+export const debugCode = async (code, lang) => {
+  const prompt = `Analyze the following ${lang} code and detect possible syntax, runtime, or logical errors, edge cases, incorrect assumptions, null/undefined issues, division-by-zero risks, unreachable code, incorrect loop conditions, or other meaningful bugs.
+
+  Do NOT report trivial stylistic preferences as bugs. Do not invent errors. Provide minimal safe fixes. Preserve intended behavior. Do not unnecessarily rewrite working code.
+
+  Return your response in a valid JSON format matching this schema:
+  {
+    "status": "issues_found" | "no_issues",
+    "summary": "Short summary of findings",
+    "issues": [
+      {
+        "severity": "error" | "warning" | "suggestion",
+        "type": "string (e.g. runtime_error, syntax_error, logic_error)",
+        "line": number (only if reliably known, else omit or null),
+        "title": "Short title of issue",
+        "description": "What the issue is",
+        "reasoning": "Why it happens",
+        "code": "The problematic code snippet",
+        "suggestedFix": "Description of how to fix it",
+        "fixedCode": "The corrected code snippet (just the fix)",
+        "canAutoFix": boolean (true if the fix is safe and confident)
+      }
+    ],
+    "fullCorrectedCode": "The entire corrected file content, or null if no issues"
+  }
+
+  Code to analyze:
+  ${code}`;
+
+  const text = await generateWithRetry(prompt, true);
   return extractJSON(text);
 };

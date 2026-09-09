@@ -46,6 +46,8 @@ const EditorPage = () => {
 
     setIsProcessing(true);
     setInsightType(type);
+    setShowInsights(true);
+    setInsightData(null);
     
     try {
       let response;
@@ -54,6 +56,7 @@ const EditorPage = () => {
         if (response.success) {
           setTranslatedCode(response.data.translatedCode);
           toast.success("AI Translation complete!");
+          setShowInsights(false); // No sidebar for translation
         }
       } else {
         if (type === "analyze") response = await analyzeComplexity(codeToProcess, language);
@@ -62,7 +65,6 @@ const EditorPage = () => {
 
         if (response.success) {
           setInsightData(response.data);
-          setShowInsights(true);
           toast.success(`Analysis ready!`);
         } else {
            // Handle rate limit specific errors
@@ -71,10 +73,21 @@ const EditorPage = () => {
            } else {
              toast.error(response.error || "AI service is currently unavailable.");
            }
+           setInsightData({ error: true, message: response.error });
         }
       }
     } catch (error) {
-      toast.error(`Service error. Please try again later.`);
+      const errorMsg = error.response?.data?.message || error.message || "Service error. Please try again later.";
+      
+      if (errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("too many requests")) {
+        toast.error("AI is busy (Rate Limit). Please wait and try again.");
+      } else {
+        toast.error(errorMsg);
+      }
+      
+      if (type !== "translate") {
+        setInsightData({ error: true, message: errorMsg });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -245,6 +258,7 @@ const EditorPage = () => {
             <AIInsightsSidebar 
               type={insightType}
               data={insightData}
+              loading={isProcessing}
               onClose={() => { setShowInsights(false); setInsightData(null); }}
               onReplaceCode={(newCode) => { setSourceCode(newCode); setShowInsights(false); toast.success("Optimized code applied!"); }}
             />

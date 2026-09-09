@@ -13,6 +13,7 @@ router.post("/translate", authenticate, codeController.translate);
 router.post("/analyze", authenticate, codeController.analyze);
 router.post("/optimize", authenticate, codeController.optimize);
 router.post("/explain", authenticate, codeController.explain);
+router.post("/debug", authenticate, codeController.debug);
 router.post("/execute", authenticate, codeController.execute);
 
 export default router;

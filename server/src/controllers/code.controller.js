@@ -104,6 +104,30 @@ export const explain = async (req, res, next) => {
   }
 };
 
+export const debug = async (req, res, next) => {
+  try {
+    const { code, language } = req.body;
+
+    if (!code || !language) {
+      return res.status(400).json({ success: false, message: "Missing code or language" });
+    }
+
+    const result = await geminiService.debugCode(code, language);
+
+    await History.create({
+      userId: req.user._id,
+      type: "debug",
+      sourceLanguage: language,
+      inputCode: code,
+      output: result,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const execute = async (req, res, next) => {
   try {
     const { code, language, stdin } = req.body;

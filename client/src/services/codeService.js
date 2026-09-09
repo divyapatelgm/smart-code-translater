@@ -41,3 +41,8 @@ export const explainCode = async (code, language) => {
   const response = await api.post("/code/explain", { code, language });
   return response.data;
 };
+
+export const debugCode = async (code, language) => {
+  const response = await api.post("/code/debug", { code, language });
+  return response.data;
+};

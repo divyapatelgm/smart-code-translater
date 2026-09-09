@@ -36,14 +36,14 @@ const ExecutionConsole = ({
       <div className="console-body">
         {/* 🔹 Stdin Input Section */}
         <div className="console-input-area">
-          <span style={{ color: 'var(--accent-purple)', fontWeight: 600 }}>❯</span>
-          <input 
-            type="text" 
-            placeholder="Provide program input (stdin) here..." 
+          <span style={{ color: 'var(--accent-purple)', fontWeight: 600, marginTop: '2px' }}>❯</span>
+          <textarea 
+            placeholder="Provide program input (stdin) here... (use new lines for multiple inputs)" 
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
             className="console-stub"
             disabled={isRunning}
+            rows={2}
           />
         </div>
 
@@ -129,7 +129,7 @@ const ExecutionConsole = ({
 
         .console-input-area {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 10px;
           margin-bottom: 12px;
           padding-bottom: 8px;
@@ -142,6 +142,9 @@ const ExecutionConsole = ({
           color: var(--text-primary);
           width: 100%;
           outline: none;
+          resize: vertical;
+          min-height: 40px;
+          font-family: inherit;
         }
 
         .console-logs {
