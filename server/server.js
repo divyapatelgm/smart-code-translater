@@ -12,7 +12,7 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`Allowed Client URL: ${process.env.CLIENT_URL || "NOT SET"}`);
     });
