@@ -23,3 +23,6 @@ client/scratch/
 # OS Files
 .DS_Store
 Thumbs.db
+
+#Client gitignored files
+client/.gitignore
