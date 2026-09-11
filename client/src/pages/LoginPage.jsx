@@ -24,7 +24,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to="/" />;
+  if (user) return <Navigate to="/dashboard" />;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,7 +38,7 @@ const LoginPage = () => {
         await login(email, password);
         toast.success(`Welcome back!`);
       }
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Something went wrong.");
     } finally {
@@ -52,7 +52,7 @@ const LoginPage = () => {
       localStorage.setItem("token", result.token);
       login(result.user.email, ""); 
       toast.success(`Welcome, ${result.user.name}!`);
-      navigate("/");
+      navigate("/dashboard");
     } catch {
       toast.error("Google login failed. Please try again.");
     }

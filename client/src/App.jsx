@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Pages
+import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import EditorPage from "./pages/EditorPage.jsx";
 import HistoryPage from "./pages/HistoryPage.jsx";
@@ -15,11 +16,12 @@ function App() {
     <div className="app-shell">
       <Routes>
         {/* 🔓 Public Route */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
         {/* 🔐 Protected Routes */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
