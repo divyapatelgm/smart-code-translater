@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(rgba(10, 11, 16, 0.7), rgba(10, 11, 16, 0.7)), url('C:/Users/Divya GM/.gemini/antigravity/brain/87a97d06-ca69-40f5-acf4-44c3740dcf99/code_translation_branding_1776335929577.png');
+  background: linear-gradient(rgba(10, 11, 16, 0.7), rgba(10, 11, 16, 0.7)), url('../assets/login_bg.png');
   background-size: cover;
   background-position: center;
 }

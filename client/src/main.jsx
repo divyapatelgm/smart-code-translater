@@ -20,7 +20,7 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import "./index.css";
 
 // Get Google Client ID from .env
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
