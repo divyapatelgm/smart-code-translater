@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import { Clock, ArrowRight, Trash2, ExternalLink, Inbox, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { getHistory, deleteHistoryItem } from "../services/historyService";
 import "../styles/history.css";
 
 const HistoryPage = () => {
@@ -11,20 +12,30 @@ const HistoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    // Mock fetch for UI stability while backend is being aligned
-    setTimeout(() => {
-      setHistory([
-        { id: 1, from: "JavaScript", to: "Python", preview: 'console.log("Hello World");', timestamp: "2 hours ago" },
-        { id: 2, from: "Java", to: "TypeScript", preview: "public class Main { public static void main...", timestamp: "Yesterday" },
-        { id: 3, from: "Python", to: "C++", preview: 'print(f"Data process: {result}")', timestamp: "Apr 14, 2026" }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchHistory = async () => {
+      try {
+        const data = await getHistory();
+        setHistory(data.history || data || []);
+      } catch (error) {
+        toast.error("Failed to load history");
+        console.error("Error fetching history:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchHistory();
   }, []);
 
-  const deleteItem = (id) => {
-    setHistory(history.filter(item => item.id !== id));
-    toast.success("Record removed from history");
+  const deleteItem = async (id) => {
+    try {
+      await deleteHistoryItem(id);
+      setHistory(history.filter(item => (item._id || item.id) !== id));
+      toast.success("Record removed from history");
+    } catch (error) {
+      toast.error("Failed to delete record");
+      console.error("Error deleting history:", error);
+    }
   };
 
   const filteredHistory = history.filter(item => 
@@ -61,7 +72,7 @@ const HistoryPage = () => {
             {filteredHistory.length > 0 ? (
               filteredHistory.map((item, index) => (
                 <motion.div
-                  key={item.id}
+                  key={item._id || item.id || index}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -90,7 +101,7 @@ const HistoryPage = () => {
                       className="btn-outline" 
                       style={{ padding: '8px', color: '#ff453a' }} 
                       title="Delete"
-                      onClick={() => deleteItem(item.id)}
+                      onClick={() => deleteItem(item._id || item.id)}
                     >
                       <Trash2 size={18} />
                     </button>
