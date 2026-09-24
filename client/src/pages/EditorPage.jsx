@@ -12,6 +12,7 @@ import { runCode } from "../services/executionService";
 // 🔹 Components
 import ExecutionConsole from "../components/ExecutionConsole";
 import AIInsightsSidebar from "../components/AIInsightsSidebar";
+import AskSmartCode from "../components/AskSmartCode";
 
 // 🔹 Constants & Styles
 import { LANGUAGES } from "../constants/languages";
@@ -33,6 +34,25 @@ const EditorPage = () => {
   const [showInsights, setShowInsights] = useState(false);
   const [insightType, setInsightType] = useState(null);
   const [insightData, setInsightData] = useState(null);
+
+  const handleAskSmartCodeCodeGenerated = (newCode, lang) => {
+    // Determine whether to put code in source or translated panel. 
+    // Usually source code makes sense unless it's explicitly a translation.
+    // For now, put it in source panel
+    setSourceCode(newCode);
+    if (lang) {
+      const languageMatch = LANGUAGES.find(l => l.name.toLowerCase() === lang.toLowerCase() || l.id === lang.toLowerCase());
+      if (languageMatch) {
+        setSourceLang(languageMatch.id);
+      }
+    }
+  };
+
+  const handleAskSmartCodeInsightGenerated = (insightDataFromAsk) => {
+    setInsightType("assistant");
+    setShowInsights(true);
+    setInsightData(insightDataFromAsk);
+  };
 
   /**
    * Generalized AI action handler
@@ -164,6 +184,13 @@ const EditorPage = () => {
             </button>
           </div>
         </div>
+
+        <AskSmartCode 
+          currentCode={sourceCode} 
+          currentLanguage={sourceLang} 
+          onCodeGenerated={handleAskSmartCodeCodeGenerated}
+          onInsightGenerated={handleAskSmartCodeInsightGenerated}
+        />
 
         <div className="zen-grid">
           {/* 🔹 Source Panel */}

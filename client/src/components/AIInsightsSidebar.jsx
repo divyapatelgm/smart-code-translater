@@ -200,6 +200,41 @@ const AIInsightsSidebar = ({ type, data, loading, onClose, onReplaceCode }) => {
           </div>
         );
 
+      case "assistant":
+        return (
+          <div className="insight-content">
+             <div className="suggestions-box card-box" style={{ marginBottom: '16px' }}>
+                <div className="box-header" style={{ color: 'var(--accent-purple)' }}>
+                  <Sparkles size={16} /> <span>SmartCode Response</span>
+                </div>
+                {data.intent && <div style={{ marginBottom: '8px', fontSize: '0.8rem', color: '#aaa', textTransform: 'uppercase' }}>Intent: {data.intent}</div>}
+                {data.explanation && <p style={{ fontSize: '1rem', lineHeight: '1.5' }}>{data.explanation}</p>}
+             </div>
+             
+             {data.suggestions && data.suggestions.length > 0 && (
+                <div className="suggestions-box card-box" style={{ marginBottom: '16px' }}>
+                  <div className="box-header" style={{ color: 'var(--accent-cyan)' }}>
+                    <Info size={16} /> <span>Suggestions</span>
+                  </div>
+                  <ul style={{ paddingLeft: '20px' }}>
+                     {data.suggestions.map((s, i) => <li key={i} style={{ marginBottom: '8px' }}>{s}</li>)}
+                  </ul>
+                </div>
+             )}
+
+             {data.warnings && data.warnings.length > 0 && (
+                <div className="suggestions-box card-box">
+                  <div className="box-header" style={{ color: '#ff453a' }}>
+                    <AlertTriangle size={16} /> <span>Warnings</span>
+                  </div>
+                  <ul style={{ paddingLeft: '20px' }}>
+                     {data.warnings.map((w, i) => <li key={i} style={{ marginBottom: '8px', color: '#ffaaa5' }}>{w}</li>)}
+                  </ul>
+                </div>
+             )}
+          </div>
+        );
+
       default:
         return <p>No insights found.</p>;
     }
@@ -220,6 +255,7 @@ const AIInsightsSidebar = ({ type, data, loading, onClose, onReplaceCode }) => {
             {type === "analyze" && "Complexity Analysis"}
             {type === "optimize" && "Refactor Lab"}
             {type === "explain" && "Logic Mastery"}
+            {type === "assistant" && "Assistant Insights"}
           </h3>
         </div>
         <button className="close-btn" onClick={onClose} aria-label="Close Sidebar">

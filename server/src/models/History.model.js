@@ -10,7 +10,7 @@ const historySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["translate", "analyze", "optimize", "explain"],
+      enum: ["translate", "analyze", "optimize", "explain", "debug", "assistant_ask"],
       required: true,
     },
     sourceLanguage: {
@@ -22,7 +22,16 @@ const historySchema = new mongoose.Schema(
     },
     inputCode: {
       type: String,
-      required: true,
+      default: "",
+    },
+    prompt: {
+      type: String,
+    },
+    intent: {
+      type: String,
+    },
+    naturalLanguage: {
+      type: String,
     },
     output: {
       type: Object, // Stores formatted AI response (translatedCode, explanation, etc.)

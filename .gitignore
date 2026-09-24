@@ -26,3 +26,5 @@ Thumbs.db
 
 #Client gitignored files
 client/.gitignore
+
+client_secret.json

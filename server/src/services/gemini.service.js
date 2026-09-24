@@ -3,8 +3,19 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Initialize the Official Google Generative AI SDK
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize API Keys array from comma-separated string
+const apiKeys = process.env.GEMINI_API_KEY 
+  ? process.env.GEMINI_API_KEY.split(',').map(k => k.trim()).filter(Boolean)
+  : [];
+let currentKeyIndex = 0;
+
+const getNextGenAI = () => {
+  if (apiKeys.length === 0) throw new Error("No Gemini API key provided in environment variables.");
+  const key = apiKeys[currentKeyIndex];
+  // Move to next key for round-robin
+  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+  return new GoogleGenerativeAI(key);
+};
 
 // 🔹 List of models to try in order of priority/stability
 const AVAILABLE_MODELS = [
@@ -17,7 +28,7 @@ const AVAILABLE_MODELS = [
  * Robust JSON Parser to extract JSON blocks from AI responses.
  * Sometimes the AI includes conversational text outside the markdown block.
  */
-const extractJSON = (text) => {
+export const extractJSON = (text) => {
   try {
     // Look for JSON block if it exists
     const match = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
@@ -32,18 +43,22 @@ const extractJSON = (text) => {
   }
 };
 
-const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 2000) => {
+export const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 2000) => {
   let lastError = null;
 
   for (const modelName of AVAILABLE_MODELS) {
     const config = isJson ? { responseMimeType: "application/json" } : {};
-    const model = genAI.getGenerativeModel({ 
-      model: modelName,
-      generationConfig: config
-    });
     
-    for (let i = 0; i < retries; i++) {
+    // We will increase retries dynamically if we have multiple keys to cycle through them all
+    const maxRetries = apiKeys.length > 1 ? Math.max(retries, apiKeys.length + 1) : retries;
+    
+    for (let i = 0; i < maxRetries; i++) {
       try {
+        const genAI = getNextGenAI();
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          generationConfig: config
+        });
         console.log(`[Gemini] Attempting with model: ${modelName} (Attempt ${i + 1}/${retries})`);
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -62,10 +77,15 @@ const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 200
         // Handle 429 (Rate Limit) and 503 (Overloaded)
         const isRetryable = errStatus === 429 || errStatus === 503 || errMsg.includes("503") || errMsg.includes("429");
         
-        if (isRetryable && i < retries - 1) {
-          console.log(`[Gemini] Model ${modelName} busy (${errStatus}). Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 1.5;
+        if (isRetryable && i < maxRetries - 1) {
+          if (apiKeys.length > 1) {
+            console.log(`[Gemini] Model ${modelName} busy (${errStatus}). Rotating to next API key immediately...`);
+            await new Promise(resolve => setTimeout(resolve, 300)); // Small delay to avoid spamming
+          } else {
+            console.log(`[Gemini] Model ${modelName} busy (${errStatus}). Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 1.5;
+          }
           continue;
         }
 

@@ -16,7 +16,7 @@ import "../styles/login.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { user, login, register } = useAuth();
+  const { user, login, register, googleLogin: contextGoogleLogin } = useAuth();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
@@ -48,12 +48,10 @@ const LoginPage = () => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const result = await googleLogin(credentialResponse.credential);
-      localStorage.setItem("token", result.token);
-      login(result.user.email, ""); 
+      const result = await contextGoogleLogin(credentialResponse.credential);
       toast.success(`Welcome, ${result.user.name}!`);
       navigate("/dashboard");
-    } catch {
+    } catch (err) {
       toast.error("Google login failed. Please try again.");
     }
   };

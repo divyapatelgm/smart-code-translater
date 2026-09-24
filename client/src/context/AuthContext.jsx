@@ -58,6 +58,15 @@ export const AuthProvider = ({ children }) => {
   };
 
 
+  // 🔹 Google Login Function
+  const googleLoginUser = async (credential) => {
+    const { googleLogin } = await import("../services/authService");
+    const data = await googleLogin(credential);
+    localStorage.setItem("token", data.token);
+    setUser(data.user);
+    return data;
+  };
+
   // 🔹 Register Function
   const registerUser = async (name, email, password) => {
     const data = await register(name, email, password);
@@ -87,6 +96,7 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login: loginUser,
+        googleLogin: googleLoginUser,
         register: registerUser,
         logout: logoutUser,
       }}
