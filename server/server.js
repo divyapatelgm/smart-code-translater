@@ -12,7 +12,8 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : undefined;
+    // Render explicitly requires 0.0.0.0 to expose the port. Locally, we leave it undefined to support IPv4/IPv6 automatically.
+    const host = (process.env.RENDER || process.env.NODE_ENV === 'production') ? '0.0.0.0' : undefined;
     app.listen(PORT, host, () => {
       console.log(`Server is running on port ${PORT} (Host: ${host || 'default'})`);
       console.log(`Allowed Client URL: ${process.env.CLIENT_URL || "NOT SET"}`);
