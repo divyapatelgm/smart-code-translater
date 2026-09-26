@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 // Auth context
 import { useAuth } from "../context/AuthContext";
@@ -22,6 +22,7 @@ const LoginPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (user) return <Navigate to="/dashboard" />;
@@ -132,31 +133,30 @@ const LoginPage = () => {
               <div style={{ position: 'relative' }}>
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   className="input-field"
                   placeholder="••••••••"
-                  style={{ paddingLeft: '40px' }}
+                  style={{ paddingLeft: '40px', paddingRight: '40px' }}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <div 
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--text-muted)' }}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </div>
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '16px' }} disabled={loading}>
+            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '24px' }} disabled={loading}>
               {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
               {!loading && <ArrowRight size={18} />}
             </button>
           </form>
 
-          <p className="toggle-auth">
-            {isSignUp ? "Already have an account?" : "New to SmartCode?"}{" "}
-            <span onClick={() => setIsSignUp(!isSignUp)}>
-              {isSignUp ? "Sign In" : "Create Account"}
-            </span>
-          </p>
-
-          <div className="divider">Or continue with</div>
+          <div className="auth-divider"><span>Or continue with</span></div>
 
           <div className="google-btn-wrapper">
             <GoogleLogin
@@ -167,6 +167,13 @@ const LoginPage = () => {
               width="100%"
             />
           </div>
+
+          <p className="toggle-auth">
+            {isSignUp ? "Already have an account?" : "New to SmartCode?"}{" "}
+            <span onClick={() => setIsSignUp(!isSignUp)}>
+              {isSignUp ? "Sign In" : "Create Account"}
+            </span>
+          </p>
         </motion.div>
       </div>
     </div>

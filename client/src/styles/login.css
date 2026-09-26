@@ -99,30 +99,29 @@
   text-decoration: underline;
 }
 
-.divider {
+.auth-divider {
   display: flex;
   align-items: center;
-  text-align: center;
+  justify-content: center;
   margin: 32px 0;
+  width: 100%;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.auth-divider span {
+  padding: 0 16px;
   color: var(--text-muted);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.divider:not(:empty)::before {
-  margin-right: 1.5em;
-}
-
-.divider:not(:empty)::after {
-  margin-left: 1.5em;
+  white-space: nowrap;
 }
 
 .google-btn-wrapper {
