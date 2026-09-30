@@ -1,11 +1,70 @@
-import { useState } from "react";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Sparkles, Send, Loader2, Mic, MicOff } from "lucide-react";
 import { askSmartCode } from "../services/assistantService";
 import toast from "react-hot-toast";
 
 const AskSmartCode = ({ currentCode, currentLanguage, onCodeGenerated, onInsightGenerated }) => {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [conversationId] = useState(() => crypto.randomUUID());
+  
+  // We need a ref to store the recognition instance so we can stop it if needed
+  const recognitionRef = useRef(null);
+
+  // Initialize Speech Recognition on mount if supported
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true; // Show words as they are spoken
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        toast("Listening...", { icon: '🎙️', id: 'voice-toast' });
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0].transcript)
+          .join("");
+        
+        setPrompt(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+        toast.dismiss('voice-toast');
+        if (event.error === 'not-allowed') {
+          toast.error("Microphone access denied.");
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        toast.dismiss('voice-toast');
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast.error("Voice recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setPrompt(""); // clear before new dictation
+      recognitionRef.current.start();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +75,8 @@ const AskSmartCode = ({ currentCode, currentLanguage, onCodeGenerated, onInsight
       const response = await askSmartCode({
         prompt,
         currentCode,
-        currentLanguage
+        currentLanguage,
+        conversationId
       });
 
       if (response.success) {
@@ -95,26 +155,47 @@ const AskSmartCode = ({ currentCode, currentLanguage, onCodeGenerated, onInsight
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: "12px", color: "#888" }}>Press Cmd/Ctrl + Enter to submit</span>
-          <button 
-            type="submit" 
-            disabled={isLoading || !prompt.trim()}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "#a855f7",
-              color: "white",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: "6px",
-              cursor: isLoading || !prompt.trim() ? "not-allowed" : "pointer",
-              opacity: isLoading || !prompt.trim() ? 0.7 : 1,
-              fontWeight: "500"
-            }}
-          >
-            {isLoading ? <Loader2 size={16} className="lucide-spin" /> : <Send size={16} />}
-            {isLoading ? "Thinking..." : "Generate"}
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              title={isListening ? "Stop listening" : "Voice to Code"}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: isListening ? "rgba(255, 69, 58, 0.2)" : "rgba(168, 85, 247, 0.1)",
+                color: isListening ? "#ff453a" : "#a855f7",
+                border: `1px solid ${isListening ? "#ff453a" : "rgba(168, 85, 247, 0.3)"}`,
+                padding: "8px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+            <button 
+              type="submit" 
+              disabled={isLoading || !prompt.trim()}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "#a855f7",
+                color: "white",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                cursor: isLoading || !prompt.trim() ? "not-allowed" : "pointer",
+                opacity: isLoading || !prompt.trim() ? 0.7 : 1,
+                fontWeight: "500"
+              }}
+            >
+              {isLoading ? <Loader2 size={16} className="lucide-spin" /> : <Send size={16} />}
+              {isLoading ? "Thinking..." : "Generate"}
+            </button>
+          </div>
         </div>
       </form>
     </div>

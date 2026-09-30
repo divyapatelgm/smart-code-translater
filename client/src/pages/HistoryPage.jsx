@@ -1,31 +1,53 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import { Clock, ArrowRight, Trash2, ExternalLink, Inbox, Search } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Search, Trash2, ExternalLink, Share2, Check, Inbox } from "lucide-react";
 import toast from "react-hot-toast";
-import { getHistory, deleteHistoryItem } from "../services/historyService";
+import { getHistory, deleteHistoryItem, shareSnippet } from "../services/historyService";
+import { formatDistanceToNow } from "date-fns";
 import "../styles/history.css";
 
 const HistoryPage = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [copiedId, setCopiedId] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchHistory = async () => {
+      setLoading(true);
+      setSearchError("");
       try {
-        const data = await getHistory();
-        setHistory(data.history || data || []);
+        const result = await getHistory(1, 20, searchQuery, controller.signal);
+        setHistory(result?.data?.entries || []);
       } catch (error) {
-        toast.error("Failed to load history");
-        console.error("Error fetching history:", error);
+        if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+          setSearchError("Failed to search history. Please try again.");
+        }
       } finally {
         setLoading(false);
       }
     };
     
-    fetchHistory();
-  }, []);
+    // Only search if empty or >= 2 chars
+    if (searchQuery.trim().length === 0 || searchQuery.trim().length >= 2) {
+      const delayDebounceFn = setTimeout(() => {
+        fetchHistory();
+      }, 300);
+      return () => {
+        clearTimeout(delayDebounceFn);
+        controller.abort();
+      };
+    } else {
+      // 1 char typed, wait until they type more
+      return () => controller.abort();
+    }
+  }, [searchQuery]);
 
   const deleteItem = async (id) => {
     try {
@@ -34,94 +56,138 @@ const HistoryPage = () => {
       toast.success("Record removed from history");
     } catch (error) {
       toast.error("Failed to delete record");
-      console.error("Error deleting history:", error);
     }
   };
 
-  const filteredHistory = history.filter(item => 
-    item.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.to.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.preview.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleOpenInEditor = (item) => {
+    navigate("/editor?mode=translate", {
+      state: {
+        code: item.inputCode || item.prompt || "",
+        language: item.sourceLanguage || "javascript",
+        translatedCode: item.output?.translatedCode || item.output?.code || (typeof item.output === "string" ? item.output : ""),
+        targetLanguage: item.targetLanguage || "python"
+      }
+    });
+  };
+
+  const handleShare = async (item) => {
+    try {
+      const id = item._id || item.id;
+      if (!item.isPublic) {
+        await shareSnippet(id);
+        setHistory(prev => prev.map(h => (h._id || h.id) === id ? { ...h, isPublic: true } : h));
+      }
+      const shareUrl = `${window.location.origin}/snippet/${id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      
+      setCopiedId(id);
+      toast.success("Public link copied!");
+      
+      setTimeout(() => {
+        setCopiedId(null);
+      }, 3000);
+    } catch (error) {
+      toast.error("Failed to share snippet");
+    }
+  };
 
   return (
     <Layout>
       <div className="history-page-header">
-        <h2 className="font-poppins">Translation History</h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-          <p style={{ color: 'var(--text-muted)' }}>Keep track of your previous code translations and reusable snippets.</p>
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div>
+          <h1 className="history-title">History</h1>
+          <p className="history-subtitle">Everything you've translated, asked and reviewed.</p>
+        </div>
+        
+        <div className="history-search-wrapper">
+          <div className="history-search-container">
+            <Search size={18} className="history-search-icon" />
             <input 
               type="text" 
-              placeholder="Search history..." 
-              className="glass-input" 
-              style={{ paddingLeft: '36px', width: '250px' }}
+              placeholder="Search by what the code does — try 'auth logic'" 
+              className="input-field" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <span className="semantic-badge">Semantic</span>
+          </div>
+          {searchError && <div className="search-error" style={{ color: 'var(--error)', marginTop: '8px', fontSize: '14px' }}>{searchError}</div>}
+          
+          <div className="history-filters">
+            {["all", "translate", "ask", "review"].map(f => (
+              <button 
+                key={f} 
+                className={`filter-chip ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       <div className="history-container">
         {loading ? (
-          <div className="empty-state"><h3>Loading history...</h3></div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {filteredHistory.length > 0 ? (
-              filteredHistory.map((item, index) => (
-                <motion.div
-                  key={item._id || item.id || index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="glass-card history-card"
-                >
-                  <div className="history-info">
-                    <div className="history-langs">
-                      <span>{item.from}</span>
-                      <ArrowRight size={16} color="var(--accent-cyan)" />
-                      <span>{item.to}</span>
-                    </div>
-                    <div className="history-meta">
-                      <span className="history-preview">{item.preview}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={14} /> {item.timestamp}
-                      </span>
-                    </div>
-                  </div>
+          <div className="empty-state-history">Loading history...</div>
+        ) : history.length > 0 ? (
+          history.filter(item => filter === "all" || (item.type || item.intent || 'translate').toLowerCase() === filter).map((item, index) => {
+            const titleText = item.title || (item.intent?.toLowerCase() === "ask" ? `Ask → ${item.prompt}` : `${item.sourceLanguage} → ${item.targetLanguage}`);
+            const previewText = item.preview || item.prompt || item.inputCode || "No preview";
+            const scoreText = item.similarityScore ? `Matched: ${Math.round(item.similarityScore * 100)}%` : null;
 
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn-outline" style={{ padding: '8px' }} title="Open in Editor">
-                      <ExternalLink size={18} />
-                    </button>
-                    <button 
-                      className="btn-outline" 
-                      style={{ padding: '8px', color: '#ff453a' }} 
-                      title="Delete"
-                      onClick={() => deleteItem(item._id || item.id)}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="empty-state"
-              >
-                <div className="empty-icon">
-                  <Inbox size={40} />
+            return (
+            <div key={item._id || item.id || index} className="history-card">
+              <div className="history-info">
+                <div className="history-title-row">
+                  {titleText}
                 </div>
-                <h3>No history found</h3>
-                <p>Start translating your code snippets to see them here.</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="history-preview">
+                  {previewText}
+                </div>
+                {scoreText && (
+                  <div className="history-match-score" style={{ color: 'var(--accent)', fontSize: '12px', marginTop: '4px' }}>
+                    {scoreText}
+                  </div>
+                )}
+              </div>
+              
+              <div className="history-timestamp">
+                {item.createdAt ? formatDistanceToNow(new Date(item.createdAt)) + ' ago' : 'Recently'}
+              </div>
+
+              <div className="history-actions">
+                <button 
+                  className="btn btn-ghost btn-icon" 
+                  title={item.isPublic ? "Copy Link" : "Share Snippet"}
+                  onClick={() => handleShare(item)}
+                >
+                  {copiedId === (item._id || item.id) ? <Check size={18} color="var(--success)" /> : <Share2 size={18} />}
+                </button>
+                <button 
+                  className="btn btn-ghost btn-icon" 
+                  title="Open in Editor"
+                  onClick={() => handleOpenInEditor(item)}
+                >
+                  <ExternalLink size={18} />
+                </button>
+                <button 
+                  className="btn btn-ghost btn-icon delete-btn" 
+                  title="Delete"
+                  onClick={() => deleteItem(item._id || item.id)}
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          );
+        })
+        ) : (
+          <div className="empty-state-history">
+            <Inbox size={40} style={{ marginBottom: '16px' }} />
+            <h3 style={{ marginBottom: '8px', color: 'var(--text)' }}>No history found</h3>
+            <p>Start translating your code snippets to see them here.</p>
+          </div>
         )}
       </div>
     </Layout>

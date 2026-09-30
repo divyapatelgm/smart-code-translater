@@ -1,63 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import Layout from "../components/Layout";
-import { Play, Copy, Terminal, Search, Sparkles, Cpu, Zap, ChevronRight, Code2 } from "lucide-react";
+import { Play, Copy, Share, Search, Cpu, Sparkles, Code2, Download, Maximize2, ShieldCheck, ArrowRightLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { motion, AnimatePresence } from "framer-motion";
 
-// 🔹 Logic Services
+// Services
 import { translateCode, analyzeComplexity, optimizeCode, explainCode } from "../services/codeService";
 import { runCode } from "../services/executionService";
 
-// 🔹 Components
 import ExecutionConsole from "../components/ExecutionConsole";
 import AIInsightsSidebar from "../components/AIInsightsSidebar";
-import AskSmartCode from "../components/AskSmartCode";
+import AIChatSidebar from "../components/AIChatSidebar";
+import { Loader2 } from "lucide-react";
 
-// 🔹 Constants & Styles
+// Constants & Styles
 import { LANGUAGES } from "../constants/languages";
 import "../styles/EditorStyles.css";
 
 const EditorPage = () => {
-  const [sourceCode, setSourceCode] = useState("// Type your code here...");
-  const [translatedCode, setTranslatedCode] = useState("");
-  const [sourceLang, setSourceLang] = useState("javascript");
-  const [targetLang, setTargetLang] = useState("python");
+  const location = useLocation();
+  const navigate = useNavigate();
   
-  // 🔹 AI & Execution States
+  // URL Mode (translate, ask, review)
+  const queryParams = new URLSearchParams(location.search);
+  const currentMode = queryParams.get("mode") || "translate";
+
+  const setMode = (m) => {
+    navigate(`/editor?mode=${m}`);
+  };
+
+  const getInitialState = (key, defaultVal, locationVal) => {
+    if (locationVal) return locationVal;
+    const saved = localStorage.getItem(`smartcode_${key}`);
+    return saved !== null ? saved : defaultVal;
+  };
+
+  const [sourceCode, setSourceCode] = useState(() => getInitialState("sourceCode", "// Type your code here...", location.state?.code));
+  const [translatedCode, setTranslatedCode] = useState(() => getInitialState("translatedCode", "", location.state?.translatedCode));
+  const [sourceLang, setSourceLang] = useState(() => getInitialState("sourceLang", "javascript", location.state?.language));
+  const [targetLang, setTargetLang] = useState(() => getInitialState("targetLang", "python", location.state?.targetLanguage));
+  
+  // AI & Execution States
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showConsole, setShowConsole] = useState(false);
+  const [abortController, setAbortController] = useState(null);
+  const [showConsole, setShowConsole] = useState(() => localStorage.getItem("smartcode_showConsole") === "true");
   const [isRunning, setIsRunning] = useState(false);
   const [consoleData, setConsoleData] = useState({ output: "", error: "", stdin: "" });
 
-  // 🔹 Insights Sidebar
-  const [showInsights, setShowInsights] = useState(false);
+  // Insights Data
   const [insightType, setInsightType] = useState(null);
   const [insightData, setInsightData] = useState(null);
 
-  const handleAskSmartCodeCodeGenerated = (newCode, lang) => {
-    // Determine whether to put code in source or translated panel. 
-    // Usually source code makes sense unless it's explicitly a translation.
-    // For now, put it in source panel
-    setSourceCode(newCode);
-    if (lang) {
-      const languageMatch = LANGUAGES.find(l => l.name.toLowerCase() === lang.toLowerCase() || l.id === lang.toLowerCase());
-      if (languageMatch) {
-        setSourceLang(languageMatch.id);
-      }
-    }
-  };
+  useEffect(() => {
+    localStorage.setItem("smartcode_sourceCode", sourceCode);
+    localStorage.setItem("smartcode_translatedCode", translatedCode);
+    localStorage.setItem("smartcode_sourceLang", sourceLang);
+    localStorage.setItem("smartcode_targetLang", targetLang);
+    localStorage.setItem("smartcode_showConsole", showConsole);
+  }, [sourceCode, translatedCode, sourceLang, targetLang, showConsole]);
 
-  const handleAskSmartCodeInsightGenerated = (insightDataFromAsk) => {
-    setInsightType("assistant");
-    setShowInsights(true);
-    setInsightData(insightDataFromAsk);
-  };
+  useEffect(() => {
+    setTranslatedCode("");
+  }, [targetLang]);
 
-  /**
-   * Generalized AI action handler
-   * Works for both Source and Translated panels
-   */
+
   const handleAIAction = async (type, codeToProcess, language) => {
     if (!codeToProcess?.trim()) {
       toast.error("No code to process!");
@@ -66,19 +73,24 @@ const EditorPage = () => {
 
     setIsProcessing(true);
     setInsightType(type);
-    setShowInsights(true);
     setInsightData(null);
     
+    if (type !== "translate" && currentMode !== "review") {
+      setMode("review");
+    }
+
+    const controller = new AbortController();
+    setAbortController(controller);
+    
     try {
-      let response;
       if (type === "translate") {
-        response = await translateCode(sourceCode, sourceLang, targetLang);
+        const response = await translateCode(sourceCode, sourceLang, targetLang, controller.signal);
         if (response.success) {
           setTranslatedCode(response.data.translatedCode);
-          toast.success("AI Translation complete!");
-          setShowInsights(false); // No sidebar for translation
+          toast.success("Translation complete!");
         }
       } else {
+        let response;
         if (type === "analyze") response = await analyzeComplexity(codeToProcess, language);
         else if (type === "optimize") response = await optimizeCode(codeToProcess, language);
         else if (type === "explain") response = await explainCode(codeToProcess, language);
@@ -87,50 +99,29 @@ const EditorPage = () => {
           setInsightData(response.data);
           toast.success(`Analysis ready!`);
         } else {
-           // Handle rate limit specific errors
-           if (response.error?.includes("429") || response.error?.toLowerCase().includes("quota")) {
-             toast.error("AI is busy (Rate Limit). Please wait 10 seconds and try again.");
-           } else {
-             toast.error(response.error || "AI service is currently unavailable.");
-           }
-           setInsightData({ error: true, message: response.error });
+          toast.error(response.error || "Service unavailable.");
+          setInsightData({ error: true, message: response.error });
         }
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || "Service error. Please try again later.";
-      
-      if (errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota") || errorMsg.toLowerCase().includes("too many requests")) {
-        toast.error("AI is busy (Rate Limit). Please wait and try again.");
+      if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
+        toast.error("Action canceled.");
       } else {
-        toast.error(errorMsg);
-      }
-      
-      if (type !== "translate") {
-        setInsightData({ error: true, message: errorMsg });
+        toast.error("An error occurred.");
+        if (type !== "translate") {
+          setInsightData({ error: true, message: "Error" });
+        }
       }
     } finally {
       setIsProcessing(false);
+      setAbortController(null);
     }
   };
 
-  /**
-   * Robust Copy Function with Fallback
-   */
   const handleCopy = async (text) => {
     try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard!");
-      } else {
-        // Fallback for non-secure contexts
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        toast.success("Copied (Fallback mode)!");
-      }
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard!");
     } catch (err) {
       toast.error("Failed to copy code.");
     }
@@ -154,7 +145,7 @@ const EditorPage = () => {
       }
     } catch (error) {
       setConsoleData(prev => ({ ...prev, error: error.message }));
-      toast.error("Cloud execution failed.");
+      toast.error("Execution failed.");
     } finally {
       setIsRunning(false);
     }
@@ -163,134 +154,195 @@ const EditorPage = () => {
   return (
     <Layout>
       <div className="zen-editor-wrapper">
-        <div className="editor-nav">
-          <div className="breadcrumb">
-            <Code2 size={16} />
-            <span>Workspace</span>
-            <ChevronRight size={14} className="sep" />
-            <span className="file-name">{sourceLang.toUpperCase()}</span>
+        {/* Top Bar */}
+        <div className="workspace-topbar">
+          <div className="segmented-control">
+            <button className={`segment-btn ${currentMode === 'translate' ? 'active' : ''}`} onClick={() => setMode('translate')}>Translate</button>
+            <button className={`segment-btn ${currentMode === 'ask' ? 'active' : ''}`} onClick={() => setMode('ask')}>Ask</button>
+            <button className={`segment-btn ${currentMode === 'review' ? 'active' : ''}`} onClick={() => setMode('review')}>Review</button>
           </div>
-          
-          <div className="global-actions">
-            <button 
-              className={`action-btn main ${isProcessing && insightType === "translate" ? 'loading' : ''}`} 
-              onClick={() => handleAIAction("translate", sourceCode, sourceLang)}
-              disabled={isProcessing}
-            >
-              <Zap size={16} fill="currentColor" /> {isProcessing && insightType === "translate" ? "Processing..." : "AI Translate"}
+
+          <div className="workspace-actions">
+            {currentMode === "translate" && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => handleAIAction("translate", sourceCode, sourceLang)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing && insightType === "translate" ? "Translating..." : "Run Translate"}
+                </button>
+                {isProcessing && insightType === "translate" && (
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => abortController?.abort()}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
+            <button className="btn btn-secondary" onClick={() => handleRun(sourceCode, sourceLang)}>
+              <Play size={16} style={{ marginRight: '4px' }} /> Run Code
             </button>
-            <button className="action-btn secondary" onClick={() => setShowConsole(!showConsole)}>
-              <Terminal size={16} /> Console
+            <button className="btn-icon" onClick={() => handleCopy(sourceCode)} title="Share">
+              <Share size={18} color="var(--text-2)" />
             </button>
           </div>
         </div>
 
-        <AskSmartCode 
-          currentCode={sourceCode} 
-          currentLanguage={sourceLang} 
-          onCodeGenerated={handleAskSmartCodeCodeGenerated}
-          onInsightGenerated={handleAskSmartCodeInsightGenerated}
-        />
-
-        <div className="zen-grid">
-          {/* 🔹 Source Panel */}
-          <div className="zen-panel">
-            <div className="panel-chrome">
-              <div className="chrome-left">
-                <select className="minimal-select" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
-                   {LANGUAGES.map(lang => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
-                </select>
+        {/* Workspace Grid */}
+        <div className="workspace-grid">
+          
+          {/* Source Editor */}
+          {currentMode !== "ask" && (
+            <div className="editor-pane">
+            <div className="pane-header">
+              <div className="pane-title">
+                {currentMode === "translate" && (
+                  <>
+                    <span>Input</span>
+                    <select className="minimal-select" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
+                       {LANGUAGES.map(lang => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
+                    </select>
+                  </>
+                )}
+                {currentMode !== "translate" && (
+                  <select className="minimal-select" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
+                     {LANGUAGES.map(lang => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
+                  </select>
+                )}
               </div>
-              <div className="chrome-right">
-                <button className="chrome-btn" onClick={() => handleAIAction("analyze", sourceCode, sourceLang)} title="Complexity Analysis"><Cpu size={14} /></button>
-                <button className="chrome-btn" onClick={() => handleAIAction("optimize", sourceCode, sourceLang)} title="Code Optimizer"><Sparkles size={14} /></button>
-                <button className="chrome-btn" onClick={() => handleAIAction("explain", sourceCode, sourceLang)} title="Explain Logic"><Search size={14} /></button>
-                <div className="divider"></div>
-                <button className="run-orb" onClick={() => handleRun(sourceCode, sourceLang)} disabled={isRunning}><Play size={14} fill="currentColor" /></button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn-icon" onClick={() => handleAIAction("analyze", sourceCode, sourceLang)} title="Analyze Complexity"><Cpu size={14} color="var(--text-3)"/></button>
+                <button className="btn-icon" onClick={() => handleAIAction("optimize", sourceCode, sourceLang)} title="Optimize Code"><Sparkles size={14} color="var(--text-3)"/></button>
+                <button className="btn-icon" onClick={() => handleAIAction("explain", sourceCode, sourceLang)} title="Explain Logic"><Search size={14} color="var(--text-3)"/></button>
               </div>
             </div>
             <div className="editor-canvas">
                <Editor
                 height="100%"
-                theme="vs-dark"
+                theme="vs-dark" /* We need to configure monaco theme to our v3 colors later, for now vs-dark */
                 language={sourceLang}
                 value={sourceCode}
                 onChange={(value) => setSourceCode(value)}
                 options={{ 
                   minimap: { enabled: false }, 
                   fontSize: 14, 
-                  lineHeight: 1.6,
                   fontFamily: 'JetBrains Mono',
-                  padding: { top: 15 },
                   scrollBeyondLastLine: false,
-                  backgroundColor: 'transparent'
+                  backgroundColor: '#161513'
                 }}
               />
             </div>
           </div>
+          )}
 
-          {/* 🔹 Translated Panel */}
-          <div className="zen-panel">
-            <div className="panel-chrome">
-              <div className="chrome-left">
-                <select className="minimal-select" value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
-                   {LANGUAGES.map(lang => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
-                </select>
+          {/* Right Pane (Dynamic based on mode) */}
+          {currentMode === "translate" && (
+            <div className="editor-pane">
+              <div className="pane-header">
+                <div className="pane-title">
+                  <span>Output</span>
+                  <select className="minimal-select" value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
+                     {LANGUAGES.map(lang => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {translatedCode && (
+                     <>
+                      <button className="btn-icon" onClick={() => handleCopy(translatedCode)} title="Copy"><Copy size={14} color="var(--text-3)" /></button>
+                      <button className="btn-icon" onClick={() => handleRun(translatedCode, targetLang)}><Play size={14} color="var(--text-3)" /></button>
+                     </>
+                  )}
+                </div>
               </div>
-              <div className="chrome-right">
-                 {translatedCode && (
-                   <>
-                    <button className="chrome-btn" onClick={() => handleAIAction("analyze", translatedCode, targetLang)} title="Complexity Analysis"><Cpu size={14} /></button>
-                    <button className="chrome-btn" onClick={() => handleAIAction("optimize", translatedCode, targetLang)} title="Code Optimizer"><Sparkles size={14} /></button>
-                    <button className="chrome-btn" onClick={() => handleAIAction("explain", translatedCode, targetLang)} title="Explain Logic"><Search size={14} /></button>
-                    <div className="divider"></div>
-                    <button className="chrome-btn" onClick={() => handleCopy(translatedCode)} title="Copy"><Copy size={14} /></button>
-                    <button className="run-orb primary" onClick={() => handleRun(translatedCode, targetLang)} disabled={isRunning}><Play size={14} fill="currentColor" /></button>
-                   </>
-                 )}
-              </div>
-            </div>
-            <div className="editor-canvas result-view">
-               {translatedCode ? (
-                  <pre className="code-display"><code>{translatedCode}</code></pre>
-               ) : (
+              <div className="editor-canvas">
+                {translatedCode ? (
+                  <Editor
+                    height="100%"
+                    theme="vs-dark"
+                    language={targetLang}
+                    value={translatedCode}
+                    options={{ 
+                      minimap: { enabled: false }, 
+                      fontSize: 14, 
+                      fontFamily: 'JetBrains Mono',
+                      scrollBeyondLastLine: false,
+                      readOnly: true
+                    }}
+                  />
+                ) : isProcessing && insightType === "translate" ? (
                   <div className="empty-state">
-                    <Sparkles size={40} className="pulse-icon" />
-                    <p>Enter code and click "AI Translate" to generate results across 25+ languages</p>
+                    <Loader2 size={32} color="var(--accent)" className="spin" />
+                    <p>Translating your code...</p>
                   </div>
-               )}
+                ) : (
+                  <div className="empty-state">
+                    <ArrowRightLeft size={32} color="var(--border-strong)" />
+                    <p>Enter code and click "Run Translate"</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        <AnimatePresence>
-          {showConsole && (
-            <div className="console-floor">
-               <ExecutionConsole 
-                output={consoleData.output}
-                error={consoleData.error}
-                stdin={consoleData.stdin}
-                setStdin={(val) => setConsoleData(prev => ({ ...prev, stdin: val }))}
-                isRunning={isRunning}
-                loading={isRunning}
-                onClear={() => setConsoleData(prev => ({ ...prev, output: "", error: "" }))}
-                onClose={() => setShowConsole(false)}
+          {currentMode === "ask" && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <AIChatSidebar 
+                isOpen={true} 
+                onClose={() => setMode('translate')}
+                currentCode={sourceCode}
+                currentLanguage={sourceLang}
+                onApplyCode={(newCode, lang) => {
+                  setSourceCode(newCode);
+                  if (lang) {
+                    const languageMatch = LANGUAGES.find(l => l.name.toLowerCase() === lang.toLowerCase() || l.id === lang.toLowerCase());
+                    if (languageMatch) setSourceLang(languageMatch.id);
+                  }
+                  toast.success("Code applied to editor!");
+                }}
               />
             </div>
           )}
-        </AnimatePresence>
 
-        <AnimatePresence>
-          {showInsights && (
-            <AIInsightsSidebar 
-              type={insightType}
-              data={insightData}
-              loading={isProcessing}
-              onClose={() => { setShowInsights(false); setInsightData(null); }}
-              onReplaceCode={(newCode) => { setSourceCode(newCode); setShowInsights(false); toast.success("Optimized code applied!"); }}
-            />
+          {currentMode === "review" && (
+            <div className="workspace-sidebar">
+              {(insightData || (isProcessing && insightType !== "translate")) ? (
+                <AIInsightsSidebar 
+                  type={insightType}
+                  data={insightData}
+                  loading={isProcessing}
+                  onClose={() => { setInsightData(null); }}
+                  onReplaceCode={(newCode) => { setSourceCode(newCode); setInsightData(null); toast.success("Optimized code applied!"); }}
+                />
+              ) : (
+                <div className="empty-state">
+                  <ShieldCheck size={32} color="var(--border-strong)" />
+                  <p>Select an action (Analyze, Optimize, Explain) to review your code.</p>
+                </div>
+              )}
+            </div>
           )}
-        </AnimatePresence>
+
+        </div>
+
+        {/* Execution Console */}
+        {showConsole && (
+          <div className="console-floor">
+             <ExecutionConsole 
+              output={consoleData.output}
+              error={consoleData.error}
+              stdin={consoleData.stdin}
+              setStdin={(val) => setConsoleData(prev => ({ ...prev, stdin: val }))}
+              isRunning={isRunning}
+              loading={isRunning}
+              onClear={() => setConsoleData(prev => ({ ...prev, output: "", error: "" }))}
+              onClose={() => setShowConsole(false)}
+            />
+          </div>
+        )}
+
       </div>
     </Layout>
   );

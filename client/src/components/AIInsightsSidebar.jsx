@@ -67,105 +67,57 @@ const AIInsightsSidebar = ({ type, data, loading, onClose, onReplaceCode }) => {
               <div className="complexity-card">
                 <Zap size={20} color="var(--accent-cyan)" />
                 <span className="label">TIME COMPLEXITY</span>
-                <span className="value">{data.timeComplexity || "O(1)"}</span>
+                <span className="value">{data.complexity?.time || "O(1)"}</span>
               </div>
               <div className="complexity-card">
                 <Cpu size={20} color="var(--accent-purple)" />
                 <span className="label">SPACE COMPLEXITY</span>
-                <span className="value">{data.spaceComplexity || "O(1)"}</span>
+                <span className="value">{data.complexity?.space || "O(1)"}</span>
               </div>
             </div>
 
             <div className="explanation-section card-box" style={{ padding: "16px 20px" }}>
-              <div className="box-header" style={{ marginBottom: "15px" }}><Info size={16} /> <span>Analysis Details</span></div>
-              <div style={{ marginBottom: "12px" }}>
-                <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Why this complexity?</span>
-                <p style={{ color: "rgba(255, 255, 255, 0.7)", fontSize: "0.95rem", lineHeight: "1.5" }}>{data.explanation}</p>
+              <div className="box-header" style={{ marginBottom: "15px" }}>
+                <Sparkles size={16} color="var(--accent-cyan)" /> <span>AI Code Review</span>
               </div>
-              
-              {data.operations && data.operations.length > 0 && (
-                <div style={{ marginTop: "16px" }}>
-                  <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Operations</span>
-                  <ul style={{ paddingLeft: "20px", marginTop: "8px", fontSize: "0.95rem", color: "rgba(255, 255, 255, 0.7)", lineHeight: "1.5" }}>
-                    {data.operations.map((op, idx) => <li key={idx} style={{ marginBottom: "4px" }}>{op}</li>)}
-                  </ul>
-                </div>
-              )}
+              <div style={{ marginBottom: "12px" }}>
+                <p style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.95rem", lineHeight: "1.5" }}>
+                  {data.summary}
+                </p>
+              </div>
             </div>
 
-            {(data.breakdown?.length > 0 || data.spaceBreakdown?.length > 0 || data.bestCase || data.averageCase || data.worstCase) && (
-              <CollapsibleSection title="Detailed Breakdown">
-                {data.breakdown && data.breakdown.length > 0 && (
-                  <div style={{ marginBottom: "16px" }}>
-                     <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>Loop / Time Breakdown</span>
-                     <div style={{ marginTop: "8px" }}>
-                        {data.breakdown.map((item, idx) => (
-                           <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.95rem" }}>
-                             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>{item.title}</span>
-                             <span style={{ fontWeight: "bold" }}>{item.description}</span>
-                           </div>
-                        ))}
-                     </div>
+            {data.issues && data.issues.length > 0 ? (
+              <CollapsibleSection title={`Detected Issues (${data.issues.length})`} defaultOpen={true}>
+                {data.issues.map((issue, idx) => (
+                  <div key={idx} style={{ 
+                    marginBottom: "12px", 
+                    padding: "12px", 
+                    background: "rgba(255,255,255,0.03)", 
+                    borderRadius: "8px", 
+                    borderLeft: `3px solid ${issue.severity === 'critical' ? '#ff453a' : issue.severity === 'major' ? '#ff9f0a' : '#ffd60a'}` 
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                        {issue.type} • Line {issue.line || "?"}
+                      </span>
+                      <span style={{ fontSize: "0.7rem", padding: "2px 6px", borderRadius: "4px", background: "rgba(255,255,255,0.1)" }}>
+                        {issue.severity}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: "0.9rem", marginBottom: "8px" }}>{issue.description}</p>
+                    <div style={{ fontSize: "0.85rem", color: "var(--accent-cyan)", display: "flex", gap: "6px", alignItems: "flex-start" }}>
+                      <Info size={14} style={{ marginTop: "2px", flexShrink: 0 }} />
+                      <span>{issue.suggestion}</span>
+                    </div>
                   </div>
-                )}
-                
-                {data.spaceBreakdown && data.spaceBreakdown.length > 0 && (
-                  <div style={{ marginBottom: "16px" }}>
-                     <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>Space Breakdown</span>
-                     <div style={{ marginTop: "8px" }}>
-                        {data.spaceBreakdown.map((item, idx) => (
-                           <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.95rem" }}>
-                             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>{item.title}</span>
-                             <span style={{ fontWeight: "bold" }}>{item.description}</span>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-                )}
-
-                {(data.bestCase || data.worstCase) && (
-                   <div style={{ marginBottom: "8px" }}>
-                     <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>Case Analysis</span>
-                     <div style={{ marginTop: "8px" }}>
-                        {data.bestCase && (
-                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.95rem" }}>
-                             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Best Case</span>
-                             <span style={{ fontWeight: "bold" }}>{data.bestCase}</span>
-                           </div>
-                        )}
-                        {data.averageCase && (
-                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.95rem" }}>
-                             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Average Case</span>
-                             <span style={{ fontWeight: "bold" }}>{data.averageCase}</span>
-                           </div>
-                        )}
-                        {data.worstCase && (
-                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.95rem" }}>
-                             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Worst Case</span>
-                             <span style={{ fontWeight: "bold" }}>{data.worstCase}</span>
-                           </div>
-                        )}
-                     </div>
-                   </div>
-                )}
+                ))}
               </CollapsibleSection>
-            )}
-
-            {(data.assumptions || data.technicalNotes) && (
-              <CollapsibleSection title="Technical Notes">
-                {data.assumptions && (
-                  <div style={{ marginBottom: "12px" }}>
-                     <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>Assumptions</span>
-                     <p style={{ marginTop: "4px", fontSize: "0.9rem", color: "rgba(255, 255, 255, 0.6)", lineHeight: "1.5" }}>{data.assumptions}</p>
-                  </div>
-                )}
-                {data.technicalNotes && (
-                  <div>
-                     <span className="label" style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--text-muted)" }}>Language Caveats</span>
-                     <p style={{ marginTop: "4px", fontSize: "0.9rem", color: "rgba(255, 255, 255, 0.6)", lineHeight: "1.5" }}>{data.technicalNotes}</p>
-                  </div>
-                )}
-              </CollapsibleSection>
+            ) : (
+              <div className="explanation-section card-box" style={{ padding: "16px 20px", display: "flex", gap: "10px", alignItems: "center", color: "#4cd964" }}>
+                <Check size={20} />
+                <span style={{ fontSize: "0.95rem", fontWeight: "500" }}>No major issues detected! Your code looks great.</span>
+              </div>
             )}
           </div>
         );
@@ -208,7 +160,7 @@ const AIInsightsSidebar = ({ type, data, loading, onClose, onReplaceCode }) => {
                   <Sparkles size={16} /> <span>SmartCode Response</span>
                 </div>
                 {data.intent && <div style={{ marginBottom: '8px', fontSize: '0.8rem', color: '#aaa', textTransform: 'uppercase' }}>Intent: {data.intent}</div>}
-                {data.explanation && <p style={{ fontSize: '1rem', lineHeight: '1.5' }}>{data.explanation}</p>}
+                {data.explanation && <p style={{ fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'rgba(255, 255, 255, 0.85)' }}>{data.explanation}</p>}
              </div>
              
              {data.suggestions && data.suggestions.length > 0 && (
@@ -252,7 +204,7 @@ const AIInsightsSidebar = ({ type, data, loading, onClose, onReplaceCode }) => {
         <div className="title-area">
            <div className="dot-indicator"></div>
            <h3 className="font-poppins">
-            {type === "analyze" && "Complexity Analysis"}
+            {type === "analyze" && "AI Code Review"}
             {type === "optimize" && "Refactor Lab"}
             {type === "explain" && "Logic Mastery"}
             {type === "assistant" && "Assistant Insights"}

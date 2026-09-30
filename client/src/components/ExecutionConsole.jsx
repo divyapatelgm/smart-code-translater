@@ -16,7 +16,7 @@ const ExecutionConsole = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="glass-card console-container"
+      className="console-container"
     >
       <div className="console-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

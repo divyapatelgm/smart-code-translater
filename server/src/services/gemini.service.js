@@ -43,11 +43,14 @@ export const extractJSON = (text) => {
   }
 };
 
-export const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 2000) => {
+export const generateWithRetry = async (prompt, isJson = true, retries = 2, delay = 2000, temperature = 0.7) => {
   let lastError = null;
 
   for (const modelName of AVAILABLE_MODELS) {
-    const config = isJson ? { responseMimeType: "application/json" } : {};
+    const config = {
+      ...(isJson ? { responseMimeType: "application/json" } : {}),
+      temperature
+    };
     
     // We will increase retries dynamically if we have multiple keys to cycle through them all
     const maxRetries = apiKeys.length > 1 ? Math.max(retries, apiKeys.length + 1) : retries;
@@ -99,6 +102,22 @@ export const generateWithRetry = async (prompt, isJson = true, retries = 2, dela
   throw lastError || new Error("All Gemini models failed to respond.");
 };
 
+/**
+ * Generate Vector Embeddings for Semantic Search
+ */
+export const generateEmbedding = async (text) => {
+  try {
+    const genAI = getNextGenAI();
+    // Use embedding-001 which is the most widely supported embedding model
+    const model = genAI.getGenerativeModel({ model: "embedding-001" });
+    const result = await model.embedContent(text);
+    return result.embedding.values; // Returns an array of floats
+  } catch (error) {
+    console.error("[Gemini] Embedding Error:", error.message);
+    return [];
+  }
+};
+
 export const translateCode = async (code, sourceLang, targetLang) => {
   const prompt = `Translate the following code from ${sourceLang} to ${targetLang}. 
   Return ONLY the translated code. Do not include markdown blocks like \`\`\` or any explanation.
@@ -112,27 +131,61 @@ export const translateCode = async (code, sourceLang, targetLang) => {
   return { translatedCode: cleaned };
 };
 
-export const analyzeComplexity = async (code, lang) => {
-  const prompt = `Analyze the time and space complexity of the following ${lang} code.
-  Return your response in a valid JSON format with these exact fields:
-  - "timeComplexity" (string, e.g. "O(1)", "O(n)")
-  - "spaceComplexity" (string, e.g. "O(1)", "O(n)")
-  - "explanation" (string, short summary of why it has this complexity)
-  - "operations" (optional array of strings, listing the main operations the code performs)
-  - "breakdown" (optional array of objects with "title" and "description" detailing loop/recursion analysis)
-  - "spaceBreakdown" (optional array of objects with "title" and "description" detailing space usage)
-  - "bestCase" (optional string)
-  - "averageCase" (optional string)
-  - "worstCase" (optional string)
-  - "assumptions" (optional string, any assumptions made for the complexity)
-  - "technicalNotes" (optional string, any specific language caveats like Python arbitrary precision integers)
+export const reviewCode = async (code, lang) => {
+  const prompt = `Perform a comprehensive Code Review on the following ${lang} code.
+  Analyze the code for:
+  1. Bugs
+  2. Security vulnerabilities
+  3. Performance issues
+  4. Maintainability
+  5. Code quality
+  6. Time complexity
+  7. Space complexity
+  8. Improvements
 
-  Do not fabricate results. Just analyze the provided code.
+  Return your response STRICTLY in the following JSON format. Do not add markdown outside the JSON.
+  {
+    "summary": "A 1-2 sentence overall review summary",
+    "issues": [
+      {
+        "severity": "critical" | "major" | "minor",
+        "type": "bug" | "security" | "performance" | "maintainability",
+        "line": 24,
+        "description": "Description of the issue",
+        "suggestion": "How to fix it"
+      }
+    ],
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    }
+  }
+
   Code:
   ${code}`;
 
-  const text = await generateWithRetry(prompt, true);
-  return extractJSON(text);
+  let attempts = 0;
+  while (attempts < 2) {
+    attempts++;
+    try {
+      const text = await generateWithRetry(prompt, true, 2, 2000, 0.1);
+      const json = extractJSON(text);
+      
+      const forCount = (code.match(/\bfor\b/g) || []).length;
+      const whileCount = (code.match(/\bwhile\b/g) || []).length;
+      const totalLoops = forCount + whileCount;
+      
+      const timeComp = json.complexity?.time?.toLowerCase() || "";
+      if (totalLoops >= 2 && (timeComp.includes("o(1)") || timeComp.includes("o(n)"))) {
+        throw new Error("Sanity check failed: Multiple loops detected but complexity reported as O(1) or O(n).");
+      }
+      
+      return json;
+    } catch (error) {
+      if (attempts >= 2) throw error;
+      console.warn("[Gemini] Retrying reviewCode due to sanity check failure:", error.message);
+    }
+  }
 };
 
 export const optimizeCode = async (code, lang) => {

@@ -1,52 +1,46 @@
+/* Login Page - SmartCode v3 */
 .login-page-root {
   min-height: 100vh;
   display: flex;
-  background-color: var(--bg-primary);
+  background-color: var(--bg);
 }
 
 .login-left {
-  flex: 1.2;
+  flex: 1;
+  background-color: var(--surface);
+  background-image: 
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  border-right: 1px solid var(--border);
   position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  overflow: hidden;
-  background: linear-gradient(rgba(10, 11, 16, 0.7), rgba(10, 11, 16, 0.7)), url('../assets/login_bg.png');
-  background-size: cover;
-  background-position: center;
+  align-items: center;
+  padding: var(--space-64);
 }
 
-.login-branding {
-  position: relative;
-  z-index: 2;
-  padding: 60px;
-  text-align: left;
-  max-width: 600px;
+.login-left-content {
+  max-width: 480px;
+  width: 100%;
 }
 
-.login-branding h1 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  margin-bottom: 20px;
-  line-height: 1.1;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.login-branding p {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  font-weight: 400;
+.login-left-content h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: var(--space-48);
 }
 
 .login-right {
-  flex: 0.8;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  background-color: var(--bg-secondary);
+  padding: var(--space-48);
 }
 
 .login-form-container {
@@ -55,47 +49,41 @@
 }
 
 .login-form-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-32);
 }
-
 .login-form-header h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: var(--space-8);
 }
-
 .login-form-header p {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
 }
-
 .form-group label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: var(--space-8);
 }
 
-.toggle-auth {
-  margin-top: 24px;
-  text-align: center;
-  font-size: 0.95rem;
-  color: var(--text-muted);
+.forgot-password {
+  display: block;
+  text-align: right;
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: var(--space-24);
+  text-decoration: none;
 }
-
-.toggle-auth span {
-  color: var(--accent-cyan);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition-smooth);
-}
-
-.toggle-auth span:hover {
+.forgot-password:hover {
   text-decoration: underline;
 }
 
@@ -103,38 +91,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 32px 0;
+  margin: var(--space-24) 0;
   width: 100%;
 }
-
 .auth-divider::before,
 .auth-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background-color: var(--border-color);
+  background-color: var(--border);
 }
-
 .auth-divider span {
-  padding: 0 16px;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  white-space: nowrap;
+  padding: 0 var(--space-16);
+  color: var(--text-3);
+  font-size: 13px;
 }
 
-.google-btn-wrapper {
-  display: flex;
-  justify-content: center;
+.toggle-auth {
+  margin-top: var(--space-24);
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.toggle-auth span {
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+}
+.toggle-auth span:hover {
+  text-decoration: underline;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .login-left {
     display: none;
-  }
-  .login-right {
-    flex: 1;
-    background-color: var(--bg-primary);
   }
 }

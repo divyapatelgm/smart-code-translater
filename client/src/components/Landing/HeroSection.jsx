@@ -1,70 +1,47 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ArrowRight, Play, CheckCircle2, Zap, Users } from "lucide-react";
-import landing1 from "../../assets/landing1.png";
+import heroBg from "../../assets/landing1.png";
 
 const HeroSection = () => {
+  const [demoStep, setDemoStep] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDemoStep((prev) => (prev + 1) % 4);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <section 
-      id="home" 
-      className="hero-section fade-in" 
-      style={{ animationDelay: "0.1s", backgroundImage: `url(${landing1})` }}
-    >
-      <div className="landing-container" style={{ width: '100%' }}>
-        <div className="hero-content">
-          <div className="hero-badge">
-            <Sparkles className="hero-badge-icon" />
-            Your AI-Powered Coding Companion
-          </div>
-          
-          <h1 className="hero-title">
-            Code Smarter<br />
-            Learn Faster<br />
-            <span className="text-gradient">Build Bigger</span>
-          </h1>
-          
-          <p className="hero-subtitle">
-            SmartCode helps you write, debug, learn, and improve your code with the power of AI. Designed for students, developers, and problem solvers.
-          </p>
-          
-          <div className="hero-actions">
-            <Link to="/login" className="btn-primary">
-              Get Started Free <ArrowRight size={18} />
-            </Link>
-          </div>
-          
-          <div className="hero-stats">
-            <div className="stat-item">
-              <div className="stat-icon">
-                <Users size={24} className="text-gradient" />
-              </div>
-              <div className="stat-info">
-                <h4>10K+</h4>
-                <p>Happy Developers</p>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon">
-                <Zap size={24} className="text-gradient" />
-              </div>
-              <div className="stat-info">
-                <h4>5x</h4>
-                <p>Faster Learning</p>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon">
-                <CheckCircle2 size={24} className="text-gradient" />
-              </div>
-              <div className="stat-info">
-                <h4>99%</h4>
-                <p>Satisfaction Rate</p>
-              </div>
-            </div>
-          </div>
+    <div style={{ backgroundImage: `url(${heroBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section className="hero-section container">
+        <div className="hero-left">
+        <div className="chip" style={{ marginBottom: "24px" }}>
+          Gemini-powered · 25+ languages · Voice-ready
+        </div>
+        
+        <h1 className="text-display" style={{ marginBottom: "24px" }}>
+          Write it once.<br/>
+          <span style={{ color: "var(--accent)" }}>Understand it everywhere.</span>
+        </h1>
+        
+        <p className="text-body-lg hero-subtitle">
+          SmartCode works out what you're asking, reviews your code like a senior engineer, remembers every snippet you've written, and translates between 25+ languages — by keyboard or by voice.
+        </p>
+        
+        <div className="hero-actions">
+          <Link to="/login" className="btn btn-primary btn-lg">
+            Start free
+          </Link>
+          <a href="#demo" className="btn btn-secondary btn-lg">
+            See it in action
+          </a>
         </div>
       </div>
-    </section>
+
+
+      </section>
+    </div>
   );
 };
 

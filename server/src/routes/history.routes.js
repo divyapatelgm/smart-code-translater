@@ -11,5 +11,9 @@ const router = Router();
 router.get("/", authenticate, historyController.getUserHistory);
 router.delete("/clear", authenticate, historyController.clearUserHistory);
 router.delete("/:id", authenticate, historyController.deleteHistoryItem);
+router.put("/share/:id", authenticate, historyController.shareHistoryItem);
+
+// Public route for shared snippets (no authentication required)
+router.get("/snippet/:id", historyController.getPublicSnippet);
 
 export default router;

@@ -1,35 +1,39 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import landing2 from "../../assets/landing2.png";
 
-const WorkspaceSection = () => {
+const HowItWorksSection = () => {
   return (
-    <section 
-      id="how-it-works" 
-      className="workspace-section fade-in"
-      style={{ backgroundImage: `url(${landing2})` }}
-    >
-      <div className="landing-container" style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-        <div className="workspace-content">
-          <div className="workspace-badge">More Than Just a Tool</div>
-          
-          <h2 className="workspace-title">
-            A Smarter Way <br />
-            <span className="text-gradient">to Code</span>
-          </h2>
-          
-          <p className="workspace-desc">
-            Whether you're a student learning to code or a developer building the next big thing, SmartCode is here to support you at every step.
+    <section id="how-it-works" className="landing-section container">
+      <div className="section-header">
+        <h2 className="text-h2">How It Works</h2>
+      </div>
+
+      <div className="how-it-works-grid">
+        <div className="step-item">
+          <div className="step-number">01</div>
+          <h3 className="text-h3" style={{ marginBottom: '8px' }}>Paste it or say it.</h3>
+          <p className="text-body" style={{ color: 'var(--text-2)' }}>
+            Drop in code, type a request, or hold the mic.
           </p>
-          
-          <Link to="/login" className="btn-primary" style={{ display: 'inline-flex' }}>
-            Start Your Journey <ArrowRight size={18} />
-          </Link>
+        </div>
+
+        <div className="step-item">
+          <div className="step-number">02</div>
+          <h3 className="text-h3" style={{ marginBottom: '8px' }}>Pick a mode.</h3>
+          <p className="text-body" style={{ color: 'var(--text-2)' }}>
+            Translate, ask, or review. SmartCode shows what it detected before it answers.
+          </p>
+        </div>
+
+        <div className="step-item">
+          <div className="step-number">03</div>
+          <h3 className="text-h3" style={{ marginBottom: '8px' }}>Ship it.</h3>
+          <p className="text-body" style={{ color: 'var(--text-2)' }}>
+            Run it, export it, or share a link.
+          </p>
         </div>
       </div>
     </section>
   );
 };
 
-export default WorkspaceSection;
+export default HowItWorksSection;

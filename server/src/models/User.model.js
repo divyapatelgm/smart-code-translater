@@ -23,9 +23,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    aiRequestsCount: {
+      type: Number,
+      default: 0,
+    },
+    lastAiRequestDate: {
+      type: Date,
+      default: null,
+    },
     lastLogin: {
       type: Date,
       default: Date.now,
+    },
+    featureUsage: {
+      type: Map,
+      of: Date,
+      default: {}
     },
   },
   {

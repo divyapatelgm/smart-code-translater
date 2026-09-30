@@ -26,11 +26,15 @@ export const executeCode = async (code, language, stdin = "") => {
     throw new Error(`Execution not supported for language: ${language}`);
   }
 
-  // Judge0 expected payload
+  // Judge0 expected payload with strict sandboxing and security limits
   const payload = {
     source_code: code,
     language_id: languageId,
     stdin: stdin || null,
+    cpu_time_limit: 2.0,      // Max 2 seconds of CPU time
+    wall_time_limit: 5.0,     // Max 5 seconds of total execution time
+    memory_limit: 128000,     // 128 MB memory limit
+    enable_network: false,    // Block outbound network requests (prevent malicious scripts)
   };
 
   try {

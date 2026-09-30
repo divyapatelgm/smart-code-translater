@@ -5,30 +5,34 @@ import { verifyGoogleToken } from "../config/google.config.js";
 
 //  Register Function
 export const register = async (name, email, password) => {
-  // Check if the email is already registered
-  const existing = await User.findOne({ email });
-  if (existing) {
-    const error = new Error("Email already registered.");
-    error.statusCode = 409;
-    throw error;
+  let user = await User.findOne({ email });
+  
+  if (user) {
+    // If user exists and already has a password, they are fully registered
+    if (user.password) {
+      const error = new Error("Email already registered.");
+      error.statusCode = 409;
+      throw error;
+    } else {
+      // User exists from Google OAuth but has no password. Let's link a password!
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user.password = hashedPassword;
+      if (name) user.name = name; // Update name if provided
+      await user.save();
+    }
+  } else {
+    // Brand new user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = await User.create({ name, email, password: hashedPassword });
   }
-
-  // Hash the password and create the user
-  const hashedPassword = await bcrypt.hash(password, 10);
-  // Create the user in DB
-  const user = await User.create({ name, email, password: hashedPassword });
-  // Generate JWT token for the new user
+  
+  // Generate JWT token for the user
   const token = generateToken(user);
 
   // Return safe response (NEVER send password)
   return {
     token,
-    user: {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    },
+    user: await getUserProfile(user._id),
   };
 };
 
@@ -54,12 +58,7 @@ export const emailLogin = async (email, password) => {
 
   return {
     token,
-    user: {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    },
+    user: await getUserProfile(user._id),
   };
 };
 
@@ -74,13 +73,15 @@ export const googleLogin = async (credential) => {
   "This handles both new and returning Google users in a single database call. 
   returnDocument: 'after' means "give me back the updated document" (not the old one).*/
   let user = await User.findOneAndUpdate(
-    { googleId: googleUser.googleId },
+    { email: googleUser.email },
     {
-      googleId: googleUser.googleId,
-      email: googleUser.email,
-      name: googleUser.name,
-      picture: googleUser.picture,
-      lastLogin: new Date(),
+      $set: {
+        googleId: googleUser.googleId,
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture,
+        lastLogin: new Date(),
+      }
     },
     {
       returnDocument: "after",
@@ -92,12 +93,7 @@ export const googleLogin = async (credential) => {
 
   return {
     token,
-    user: {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    },
+    user: await getUserProfile(user._id),
   };
 };
 
@@ -110,6 +106,21 @@ export const getUserProfile = async (userId) => {
     throw new Error("User not found");
   }
 
+  const DAILY_LIMIT = 50;
+  
+  const today = new Date();
+  const lastRequestDate = user.lastAiRequestDate ? new Date(user.lastAiRequestDate) : null;
+  const isNewDay = !lastRequestDate || 
+    lastRequestDate.getDate() !== today.getDate() ||
+    lastRequestDate.getMonth() !== today.getMonth() ||
+    lastRequestDate.getFullYear() !== today.getFullYear();
+    
+  const used = isNewDay ? 0 : (user.aiRequestsCount || 0);
+  const remaining = Math.max(0, DAILY_LIMIT - used);
+  
+  const resetsAt = new Date(today);
+  resetsAt.setHours(24, 0, 0, 0);
+
   return {
     id: user._id,
     email: user.email,
@@ -117,5 +128,12 @@ export const getUserProfile = async (userId) => {
     picture: user.picture,
     createdAt: user.createdAt,
     lastLogin: user.lastLogin,
+    quota: {
+      used,
+      limit: DAILY_LIMIT,
+      remaining,
+      resetsAt: resetsAt.toISOString(),
+    },
+    featureUsage: user.featureUsage ? Object.fromEntries(user.featureUsage) : {},
   };
 };

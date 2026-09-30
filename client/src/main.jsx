@@ -38,7 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <App />
 
           {/* 🔔 Toast notifications */}
-          <Toaster position="top-right" />
+          <Toaster position="top-right" containerStyle={{ top: 80 }} />
 
         </AuthProvider>
       </BrowserRouter>
